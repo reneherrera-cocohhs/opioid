@@ -1,0 +1,175 @@
+---
+title: "Opioid Related Hospitalization"
+author: "Prepared for Yari Valle"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	error = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r libraries}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(knitr)
+```
+
+```{r import}
+# import hospital discharge data
+hdd <- read_csv(file = "S:/HIPAA Compliance/Hospital Discharge Data/HDD_Updated-05042021/2018_to_2020/coconino_2018_to_2020.csv",
+                     col_types = cols(.default = "c")) %>%
+  clean_names()
+
+# import list of medical facilties in coconino county 
+coco_hospitals <- read_rds("../../coconino_county_medical_list.rds")
+
+# filter to show only hospitals
+coco_hospitals_list <- coco_hospitals %>%
+  filter(str_detect(subtype, "HOSPITAL"),
+         county == "COCONINO") %>%
+  select(facid, legalname)
+```
+
+
+```{r tidy}
+# discharge date filter 2019 & 2020
+hdd_2020 <- hdd %>%
+  mutate(discharge_date = ymd(discharge_date),
+         discharge_year = year(discharge_date),
+         discharge_month = month(discharge_date)) %>%
+  filter(discharge_year == 2019 | discharge_year == 2020)
+
+# use list of hospitals to filter to include only hospitals in coconino county 
+# show only hdd where az_fac_id matches facid 
+hdd_coco <- inner_join(x = hdd_2020,
+           y = coco_hospitals_list,
+           by = c("az_fac_id" = "facid"))
+
+# from 
+# Moore , BJ, and ML Barrett. “Case Study: Exploring How Opioid-Related Diagnosis Codes Translate From ICD-9-CM to ICD-10-CM.” U.S. Agency for Healthcare Research and Quality, April 24, 2017. https://www.hcup-us.ahrq.gov/datainnovations/icd10_resources.jsp.
+icd_10_cm <- c(#"F112",
+               #"F119",
+               "T400",
+               "T401",
+               "T402",
+               "T403",
+               "T404",
+               "T406"
+               ) %>%
+  paste(collapse = "|")
+```
+
+The information contained in this report describes the number of opioid related hospital visits for Coconino County facilities during years 2019 and 2020. The hospital discharge data is provided by AZDHS. 
+
+
+```{r table}
+# filter the Dx variables to match the icd 10 codes of interest 
+hdd_2020_opioid <- hdd_coco %>%
+  filter(if_any(contains("diagnosis"), ~str_detect(.x, icd_10_cm))) %>%
+  select(az_fac_id, legalname, contains(c("discharge_", "diag")))
+  
+# table of opioid related hospitalizations by facility and year 
+total_opioid_hospitalizations <- hdd_2020_opioid %>%
+  group_by(discharge_year) %>%
+  count() %>%
+  ungroup() 
+
+# caption for visualization 
+table_caption <- str_c("Opioid related hospitalizations in Coconino County during years 2019 and 2020.",
+      sep = "")
+
+# data table
+total_opioid_hospitalizations %>%
+  knitr::kable(col.names = c("Year", "Count"),
+               caption = table_caption)
+```
+
+```{r plot}
+# determine plot y axis upper limit
+plot_ul <- total_opioid_hospitalizations  %>%
+  summarise(max = (max(n)*1.25)) %>%
+  as.numeric()
+
+# plot of opioid hospitalizations
+total_opioid_hospitalizations %>%
+  ggplot(mapping = aes(x = discharge_year, y = n)) +
+  geom_col() +
+  ylim(0, plot_ul) +
+  scale_x_continuous(breaks = seq(2019, 2020, 1),
+                     labels = c("2019",
+                                "2020")) +
+  labs(title = "Opioid Related Hospital Visits in Coconino County (2019-2020)",
+       caption = table_caption,
+       x = "Year",
+       y = "Count") +
+  theme_light()
+```
+
+
+## Facilities
+
+Facilities were cross-referenced with the current *[AZDHS Medical Facilities Licensing](https://azdhs.gov/licensing/medical-facilities/index.php#consumers-databases)* list by id and limited to those shown below. 
+
+```{r list-hospital}
+# data table of opioid related hospital visits by facility and year
+hdd_2020_opioid %>%
+  group_by(discharge_year, legalname) %>%
+  count() %>%
+  pivot_wider(names_from = discharge_year,
+              values_from = n) %>%
+  kable(col.names = c("Facility Name",
+                      "2019",
+                      "2020"),
+        caption = "Opioid related hospital visits in Coconino County")
+```
+
+
+## Deaths and Related Opioid Hospitalization
+
+```{r deaths}
+hdd_coco %>%
+  filter(if_any(contains("diagnosis"), ~str_detect(.x, icd_10_cm))) %>%
+  select(az_fac_id, legalname, contains(c("discharge_", "diag"))) %>%
+  filter(discharge_status == "20") %>%
+  group_by(discharge_year, legalname) %>%
+  count() %>%
+  ungroup() %>%
+  pivot_wider(names_from = discharge_year,
+              values_from = n) %>%
+  kable(col.names = c("Facility Name", "2019", "2020"),
+        caption = "Count of Opioid Related Hospitalizations Where the Patient Expired")
+  
+```
+
+## ICD-10 Codes
+
+If any of the codes listed below were present in any of the diagnosis variables, then it was included in the count. Opioid related ICD-10 codes were described by:
+
+- Moore , BJ, and ML Barrett. “Case Study: Exploring How Opioid-Related Diagnosis Codes Translate From ICD-9-CM to ICD-10-CM.” U.S. Agency for Healthcare Research and Quality, April 24, 2017. https://www.hcup-us.ahrq.gov/datainnovations/icd10_resources.jsp.
+
+
+```{r list-icd}
+# function to list codes 
+list_function <- map(
+  hdd_2020_opioid, .f = function(COL){
+    tmp <- unique(COL)
+    tmp[grepl(icd_10_cm, tmp)]
+  }
+)
+
+# apply function 
+reported_icd_10_codes <- unique(unlist(list_function))
+
+# display results as data table 
+tibble(reported_icd_10_codes) %>%
+  arrange(reported_icd_10_codes) %>%
+  kable(col.names = "List of ICD-10 codes included in count")
+```
+
