@@ -7,7 +7,7 @@ library(pins) # data access
 # The pins package helps you publish data sets, models, and other R objects, making it easy to share them across projects and with your colleagues.
 # create a pin board ####
 # here for now, need to consider where the best place for this should really be
-substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Substance Abuse/data-raw")
+substance_abuse <- board_folder("")
 
 # list the pins located on the pin board ####
 substance_abuse %>%
