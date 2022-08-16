@@ -6,7 +6,7 @@ library(lubridate)
 library(pins)
 
 # read pin board 
-substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Suicide/data-raw")
+substance_abuse <- board_folder("")
 
 # list the pins located on the pin board ####
 substance_abuse %>%
@@ -26,7 +26,7 @@ glimpse(mortality_data)
 # rename for pin board 
 azdhs_mortality_extract <- mortality_data
 
-substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Substance Abuse/data-raw")
+substance_abuse <- board_folder("")
 
 # write mortality data to pin board ####
 substance_abuse %>%
