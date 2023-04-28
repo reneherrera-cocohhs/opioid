@@ -5,7 +5,7 @@ library(tidyverse)
 library(lubridate)
 library(pins)
 
-substance_abuse <- board_folder("")
+substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Substance Abuse/data-raw")
 
 # list the pins located on the pin board ####
 substance_abuse %>%

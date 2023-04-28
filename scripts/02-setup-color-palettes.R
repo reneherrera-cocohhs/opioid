@@ -8,7 +8,7 @@ library(scales) # color palette visualization
 source(file = "scripts/01-setup-pin-board.R")
 
 # # load pin board 
-substance_abuse <- board_folder("")
+substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Suicide/data-raw")
 
 # list the pins located on the pin board ####
 substance_abuse %>%
@@ -46,7 +46,7 @@ color_palette_coco_7
 show_col(color_palette_coco_7)
 
 # Save to correct pin board 
-substance_abuse <- board_folder("")
+substance_abuse <- board_folder("S:/HIPAA Compliance/SAS Files/Coconino Deaths/Substance Abuse/data-raw")
 
 # save color palette to pin board 
 substance_abuse %>%
